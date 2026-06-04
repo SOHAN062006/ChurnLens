@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChurnLens — Customer Intelligence Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    ChurnLens
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="switchView('dashboard',this)">Dashboard</button>
+    <button class="nav-btn" onclick="switchView('predict',this)">Predict</button>
+    <button class="nav-btn" onclick="switchView('customers',this)">Customers</button>
+    <button class="nav-btn" onclick="switchView('model',this)">Model</button>
+  </nav>
+  <div class="header-status">
+    <span class="status-dot"></span>
+    <span class="status-text">Live</span>
+  </div>
+</header>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loadingText">Running prediction…</div>
+  </div>
+</div>
+
+<main class="main">
+
+  <!-- ═══════════════════════════════════════════════════════════ DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <div class="section-header">
+      <div class="section-label">Overview</div>
+      <h1 class="section-title">Customer Intelligence</h1>
+      <p class="section-sub" id="dash-timestamp">Fetching live data…</p>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card k-total">
+        <div class="kpi-label">Total Customers</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+        <div class="kpi-trend">Full customer base</div>
+      </div>
+      <div class="kpi-card k-active">
+        <div class="kpi-label">Active</div>
+        <div class="kpi-value" id="kpi-active">—</div>
+        <div class="kpi-trend">Retained customers</div>
+      </div>
+      <div class="kpi-card k-churn">
+        <div class="kpi-label">Churned</div>
+        <div class="kpi-value" id="kpi-churn">—</div>
+        <div class="kpi-trend kpi-trend-warn" id="churn-trend">—</div>
+      </div>
+      <div class="kpi-card k-rate">
+        <div class="kpi-label">Churn Rate</div>
+        <div class="kpi-value" id="kpi-rate">—</div>
+        <div class="kpi-trend">Overall churn %</div>
+      </div>
+    </div>
+
+    <!-- Insights -->
+    <div class="insights-strip" id="insightsStrip" style="display:none">
+      <div class="insight-card ins-warn">
+        <div class="insight-emoji">🚨</div>
+        <div class="insight-title">Contract type is top predictor</div>
+        <div class="insight-desc">Month-to-month customers churn at 3× the rate of two-year subscribers.</div>
+      </div>
+      <div class="insight-card ins-ok">
+        <div class="insight-emoji">💚</div>
+        <div class="insight-title">Tenure drives retention</div>
+        <div class="insight-desc">Customers past 24 months have a churn rate under 10% — onboarding is critical.</div>
+      </div>
+      <div class="insight-card ins-info">
+        <div class="insight-emoji">💡</div>
+        <div class="insight-title">Tech support = loyalty</div>
+        <div class="insight-desc">TechSupport is the #2 feature. Proactive support cuts churn significantly.</div>
+      </div>
+    </div>
+
+    <!-- Charts row 1 -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Churn by Tenure Group</div>
+        <div class="chart-sub">Churned customers and churn rate across tenure bands</div>
+        <div class="chart-legend">
+          <span><i style="background:#d85a30"></i>Churned</span>
+          <span><i style="background:#ef9f27;border-radius:0"></i>Churn Rate %</span>
+        </div>
+        <div class="chart-wrap"><canvas id="monthlyChart" role="img" aria-label="Churn by tenure group bar chart">Loading…</canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Risk Distribution</div>
+        <div class="chart-sub">Current customer risk segmentation</div>
+        <div class="chart-legend">
+          <span><i style="background:#d85a30"></i>Churned</span>
+          <span><i style="background:#ef9f27"></i>Med Risk</span>
+          <span><i style="background:#1d9e75"></i>Retained</span>
+        </div>
+        <div class="chart-wrap"><canvas id="riskChart" role="img" aria-label="Risk distribution doughnut chart">Loading…</canvas></div>
+      </div>
+    </div>
+
+    <!-- Charts row 2 -->
+    <div class="charts-grid-3">
+      <div class="chart-card">
+        <div class="chart-title">Churn by City</div>
+        <div class="chart-sub">Volume of churned customers per market</div>
+        <div class="chart-wrap" style="height:210px"><canvas id="cityChart" role="img" aria-label="Churn by city bar chart">Loading…</canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Contract Impact</div>
+        <div class="chart-sub">Churn rate per contract type</div>
+        <div class="chart-wrap" style="height:210px"><canvas id="contractChart" role="img" aria-label="Contract churn rate chart">Loading…</canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Plan Type</div>
+        <div class="chart-sub">Churn rate by subscription plan</div>
+        <div class="chart-wrap" style="height:210px"><canvas id="planChart" role="img" aria-label="Plan churn rate chart">Loading…</canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════ PREDICT -->
+  <div class="view" id="view-predict">
+    <div class="section-header">
+      <div class="section-label">ML Model · Random Forest + XGBoost Ensemble</div>
+      <h1 class="section-title">Predict Churn Risk</h1>
+      <p class="section-sub">Real-time prediction powered by your trained model</p>
+    </div>
+
+    <div class="pred-layout">
+      <!-- FORM -->
+      <div class="form-card">
+        <div class="form-section">
+          <div class="form-section-title">Customer Profile</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>City</label>
+              <select id="p-city">
+                <option>Mumbai</option><option>Delhi</option><option>Bangalore</option>
+                <option selected>Hyderabad</option><option>Chennai</option><option>Pune</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Plan Type</label>
+              <select id="p-plan">
+                <option>Basic</option><option selected>Standard</option><option>Premium</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Contract</label>
+              <select id="p-contract">
+                <option selected>Month-to-month</option>
+                <option>One year</option>
+                <option>Two year</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Usage Metrics</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group" style="grid-column:span 2">
+              <label>Tenure (months) — <span id="tenure-val" class="range-live">8</span></label>
+              <input type="range" id="p-tenure" min="0" max="72" value="8" step="1"
+                oninput="document.getElementById('tenure-val').textContent=this.value">
+            </div>
+            <div class="form-group" style="grid-column:span 2">
+              <label>Monthly Charges (₹) — <span id="charge-val" class="range-live">₹899</span></label>
+              <input type="range" id="p-charge" min="200" max="2000" value="899" step="10"
+                oninput="document.getElementById('charge-val').textContent='₹'+this.value">
+            </div>
+            <div class="form-group" style="grid-column:span 2">
+              <label>Support Calls (last 3 months) — <span id="support-val" class="range-live">7</span></label>
+              <input type="range" id="p-support" min="0" max="20" value="7" step="1"
+                oninput="document.getElementById('support-val').textContent=this.value">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Services</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Internet Service</label>
+              <select id="p-internet">
+                <option selected>Fiber optic</option><option>DSL</option><option>No</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Online Security</label>
+              <select id="p-security">
+                <option>Yes</option><option selected>No</option>
+                <option>No internet service</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Streaming TV</label>
+              <select id="p-tv">
+                <option>Yes</option><option selected>No</option>
+                <option>No internet service</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Streaming Movies</label>
+              <select id="p-movies">
+                <option>Yes</option><option selected>No</option>
+                <option>No internet service</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-predict" onclick="runPrediction()">
+          Run Churn Prediction →
+        </button>
+      </div>
+
+      <!-- RESULT PANEL -->
+      <div class="result-panel">
+        <div class="result-card" id="resultCard">
+          <div id="resultEmpty" class="result-empty">
+            <div class="result-empty-icon">🔮</div>
+            <p>Fill in the customer details on the left and click <strong>Run Churn Prediction</strong> to see a real-time risk assessment powered by the trained ML model.</p>
+          </div>
+          <div id="resultContent" style="display:none">
+            <div class="result-header">
+              <span class="result-title">Risk Assessment</span>
+              <span class="result-status-badge" id="riskBadge">—</span>
+            </div>
+            <!-- Gauge -->
+            <div class="gauge-wrap">
+              <canvas id="gaugeCanvas" width="200" height="110"></canvas>
+              <div class="gauge-center">
+                <div class="gauge-pct" id="gaugePct">—</div>
+                <div class="gauge-lbl">churn probability</div>
+              </div>
+            </div>
+            <!-- Factors -->
+            <div class="result-factors">
+              <div class="factor-title">Key Risk Factors</div>
+              <div id="factorList"></div>
+            </div>
+            <!-- Recommendations -->
+            <div class="rec-box" id="recBox"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ CUSTOMERS -->
+  <div class="view" id="view-customers">
+    <div class="section-header">
+      <div class="section-label">Customer Intelligence</div>
+      <h1 class="section-title">At-Risk Customers</h1>
+      <p class="section-sub">Ranked by computed churn risk score from live data</p>
+    </div>
+
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">Customer Risk Register</div>
+        <select class="filter-select" id="riskFilter" onchange="filterTable()">
+          <option value="all">All Risk Levels</option>
+          <option value="high">High Risk</option>
+          <option value="medium">Medium Risk</option>
+          <option value="low">Low Risk</option>
+        </select>
+      </div>
+      <div class="table-scroll">
+        <table id="customerTable">
+          <thead>
+            <tr>
+              <th>Customer ID</th>
+              <th>City</th>
+              <th>Plan</th>
+              <th>Contract</th>
+              <th>Tenure</th>
+              <th>Monthly ₹</th>
+              <th>Risk Score</th>
+              <th>Level</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="9" style="text-align:center;padding:2rem;color:#888">Loading customer data…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ MODEL -->
+  <div class="view" id="view-model">
+    <div class="section-header">
+      <div class="section-label">ML Pipeline</div>
+      <h1 class="section-title">Model Intelligence</h1>
+      <p class="section-sub">Random Forest trained with SMOTE · Feature importance from your saved model</p>
+    </div>
+
+    <div class="model-grid">
+      <!-- Model card -->
+      <div class="chart-card">
+        <div class="chart-title">Feature Importance</div>
+        <div class="chart-sub">Top predictors from the trained Random Forest model</div>
+        <div class="chart-wrap" style="height:280px">
+          <canvas id="featureChart" role="img" aria-label="Feature importance bar chart">Loading…</canvas>
+        </div>
+      </div>
+
+      <!-- Pipeline steps -->
+      <div class="chart-card">
+        <div class="chart-title">Training Pipeline</div>
+        <div class="chart-sub">How the model was built</div>
+        <div class="pipeline-steps" id="pipelineSteps">
+          <div class="pipe-step">
+            <div class="pipe-num">01</div>
+            <div>
+              <div class="pipe-name">Data Generation</div>
+              <div class="pipe-desc">7,000 synthetic Indian telecom customers with realistic churn patterns</div>
+            </div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">02</div>
+            <div>
+              <div class="pipe-name">Feature Engineering</div>
+              <div class="pipe-desc">12 features: tenure, charges, contract, services, city, plan type</div>
+            </div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">03</div>
+            <div>
+              <div class="pipe-name">SMOTE Balancing</div>
+              <div class="pipe-desc">Synthetic Minority Oversampling to correct class imbalance</div>
+            </div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">04</div>
+            <div>
+              <div class="pipe-name">Ensemble Training</div>
+              <div class="pipe-desc">Logistic Regression + Random Forest + XGBoost · best by F1 score saved</div>
+            </div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-num">05</div>
+            <div>
+              <div class="pipe-name">Live Inference</div>
+              <div class="pipe-desc">Saved model loaded at startup · real-time prediction via Flask API</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model metrics banner -->
+    <div class="metrics-banner">
+      <div class="metric-pill">
+        <div class="mp-label">Algorithm</div>
+        <div class="mp-value">Random Forest</div>
+      </div>
+      <div class="metric-pill">
+        <div class="mp-label">Training Data</div>
+        <div class="mp-value">7,000 records</div>
+      </div>
+      <div class="metric-pill">
+        <div class="mp-label">Balancing</div>
+        <div class="mp-value">SMOTE</div>
+      </div>
+      <div class="metric-pill">
+        <div class="mp-label">Features</div>
+        <div class="mp-value">12 predictors</div>
+      </div>
+      <div class="metric-pill">
+        <div class="mp-label">Optimized For</div>
+        <div class="mp-value">F1-Score</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

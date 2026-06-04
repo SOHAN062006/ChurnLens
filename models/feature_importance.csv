@@ -1,0 +1,13 @@
+feature,importance
+Contract,0.37431777
+TechSupport,0.20930395
+tenure,0.053536143
+InternetService,0.05054346
+MonthlyCharges,0.047080997
+StreamingMovies,0.043210063
+PlanType,0.040141854
+OnlineSecurity,0.040110294
+City,0.037014548
+StreamingTV,0.036789097
+MonthlyServiceCalls,0.03450792
+TotalCharges,0.033443917
